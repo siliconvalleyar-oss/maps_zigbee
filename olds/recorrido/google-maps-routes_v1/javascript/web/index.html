@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Maps Route Finder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .controls input, .controls select, .controls button {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .controls input {
+            flex: 2;
+            min-width: 200px;
+        }
+
+        .controls select {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .controls button {
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+            padding: 10px 20px;
+        }
+
+        .controls button:hover {
+            background: #764ba2;
+        }
+
+        #map {
+            flex: 1;
+            width: 100%;
+        }
+
+        .info {
+            background: white;
+            padding: 15px;
+            border-top: 1px solid #e0e0e0;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+
+        .info h3 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .info p {
+            margin: 5px 0;
+        }
+
+        .instructions {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin: 5px 0;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+
+            .controls input, .controls select, .controls button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ Google Maps Route Finder</h1>
+            <p>Encuentra la mejor ruta entre dos puntos</p>
+        </div>
+
+        <div class="controls">
+            <input type="text" id="origin" placeholder="Origen (ej: Plaza Mayor, Madrid)" value="Plaza Mayor, Madrid">
+            <input type="text" id="destination" placeholder="Destino (ej: Puerta del Sol, Madrid)" value="Puerta del Sol, Madrid">
+            <select id="travelMode">
+                <option value="DRIVING">🚗 Coche</option>
+                <option value="WALKING">🚶 A pie</option>
+                <option value="BICYCLING">🚲 Bicicleta</option>
+                <option value="TRANSIT">🚇 Transporte público</option>
+            </select>
+            <button onclick="calculateRoute()">Calcular Ruta</button>
+        </div>
+
+        <div id="map"></div>
+
+        <div class="info" id="info">
+            <h3>ℹ️ Información de la Ruta</h3>
+            <p>Ingresa un origen y destino para calcular la ruta</p>
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let directionsService;
+        let directionsRenderer;
+
+        function initMap() {
+            // Centro de Madrid por defecto
+            const defaultCenter = { lat: 40.416775, lng: -3.703790 };
+
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 12,
+                center: defaultCenter,
+            });
+
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer();
+            directionsRenderer.setMap(map);
+        }
+
+        function calculateRoute() {
+            const origin = document.getElementById("origin").value;
+            const destination = document.getElementById("destination").value;
+            const travelMode = document.getElementById("travelMode").value;
+
+            if (!origin || !destination) {
+                alert("Por favor, ingresa origen y destino");
+                return;
+            }
+
+            const request = {
+                origin: origin,
+                destination: destination,
+                travelMode: google.maps.TravelMode[travelMode],
+                provideRouteAlternatives: true
+            };
+
+            directionsService.route(request, (result, status) => {
+                if (status === "OK") {
+                    directionsRenderer.setDirections(result);
+                    displayRouteInfo(result);
+                } else {
+                    console.error("Error al calcular ruta:", status);
+                    document.getElementById("info").innerHTML = `
+                        <h3>❌ Error</h3>
+                        <p>No se pudo encontrar una ruta. Verifica las direcciones.</p>
+                        <p>Error: ${status}</p>
+                    `;
+                }
+            });
+        }
+
+        function displayRouteInfo(result) {
+            const route = result.routes[0];
+            const leg = route.legs[0];
+
+            let instructionsHtml = '<div class="instructions"><ol>';
+            leg.steps.forEach(step => {
+                instructionsHtml += `<li>${step.instructions}</li>`;
+            });
+            instructionsHtml += '</ol></div>';
+
+            document.getElementById("info").innerHTML = `
+                <h3>✅ Ruta encontrada</h3>
+                <p><strong>📍 Desde:</strong> ${leg.start_address}</p>
+                <p><strong>🎯 Hasta:</strong> ${leg.end_address}</p>
+                <p><strong>📏 Distancia:</strong> ${leg.distance.text}</p>
+                <p><strong>⏱️ Duración:</strong> ${leg.duration.text}</p>
+                <h3>📝 Instrucciones paso a paso:</h3>
+                ${instructionsHtml}
+            `;
+        }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCGbLfwvbxGV_bWvbtkHQrV8hHM7flIwMo&callback=initMap&libraries=places" async defer></script>
+</body>
+</html>

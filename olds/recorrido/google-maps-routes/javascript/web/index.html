@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Maps Route Finder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 24px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .controls {
+            padding: 20px 24px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .controls input {
+            flex: 2;
+            min-width: 200px;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .controls input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .controls select {
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .controls button {
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .controls button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        #map {
+            flex: 1;
+            min-height: 400px;
+        }
+
+        .info {
+            background: white;
+            padding: 20px 24px;
+            border-top: 1px solid #e0e0e0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 14px;
+        }
+
+        .info h3 {
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        .info .route-summary {
+            background: #f0f4ff;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .info .route-summary p {
+            margin: 6px 0;
+        }
+
+        .instructions {
+            margin-top: 12px;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin: 8px 0;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .error {
+            background: #fee;
+            color: #c00;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #c00;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+
+            .controls input, .controls select, .controls button {
+                width: 100%;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗺️ Google Maps Route Finder</h1>
+            <p>Encuentra la mejor ruta entre dos puntos del mapa</p>
+        </div>
+
+        <div class="controls">
+            <input type="text" id="origin" placeholder="📍 Origen (ej: Plaza Mayor, Madrid)" value="Plaza Mayor, Madrid">
+            <input type="text" id="destination" placeholder="🎯 Destino (ej: Puerta del Sol, Madrid)" value="Puerta del Sol, Madrid">
+            <select id="travelMode">
+                <option value="DRIVING">🚗 Coche</option>
+                <option value="WALKING">🚶 A pie</option>
+                <option value="BICYCLING">🚲 Bicicleta</option>
+                <option value="TRANSIT">🚇 Transporte público</option>
+            </select>
+            <button onclick="calculateRoute()">Calcular Ruta</button>
+        </div>
+
+        <div id="map"></div>
+
+        <div class="info" id="info">
+            <h3>ℹ️ Información</h3>
+            <p>Ingresa un origen y destino para calcular la ruta</p>
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let directionsService;
+        let directionsRenderer;
+
+        function initMap() {
+            const defaultCenter = { lat: 40.416775, lng: -3.703790 };
+
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 12,
+                center: defaultCenter,
+                styles: [
+                    {
+                        featureType: "poi",
+                        elementType: "labels",
+                        stylers: [{ visibility: "off" }]
+                    }
+                ]
+            });
+
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({
+                map: map,
+                polylineOptions: {
+                    strokeColor: "#667eea",
+                    strokeWeight: 5,
+                    strokeOpacity: 0.8
+                }
+            });
+        }
+
+        function calculateRoute() {
+            const origin = document.getElementById("origin").value;
+            const destination = document.getElementById("destination").value;
+            const travelMode = document.getElementById("travelMode").value;
+
+            if (!origin || !destination) {
+                document.getElementById("info").innerHTML = '<h3>❌ Error</h3><div class="error">Por favor, ingresa origen y destino</div>';
+                return;
+            }
+
+            document.getElementById("info").innerHTML = '<h3>🔄 Calculando ruta...</h3><p>Consultando Google Maps API...</p>';
+
+            const request = {
+                origin: origin,
+                destination: destination,
+                travelMode: google.maps.TravelMode[travelMode],
+                provideRouteAlternatives: true,
+                unitSystem: google.maps.UnitSystem.METRIC
+            };
+
+            directionsService.route(request, (result, status) => {
+                if (status === "OK") {
+                    directionsRenderer.setDirections(result);
+                    const route = result.routes[0];
+                    const leg = route.legs[0];
+
+                    let instructionsHtml = '<div class="instructions"><ol>';
+                    leg.steps.forEach((step) => {
+                        instructionsHtml += '<li>' + step.instructions + '</li>';
+                    });
+                    instructionsHtml += '</ol></div>';
+
+                    document.getElementById("info").innerHTML = `
+                        <h3>✅ Ruta encontrada</h3>
+                        <div class="route-summary">
+                            <p><strong>📍 Desde:</strong> ${leg.start_address}</p>
+                            <p><strong>🎯 Hasta:</strong> ${leg.end_address}</p>
+                            <p><strong>📏 Distancia:</strong> ${leg.distance.text}</p>
+                            <p><strong>⏱️ Duración:</strong> ${leg.duration.text}</p>
+                        </div>
+                        <h3>📝 Instrucciones paso a paso (${leg.steps.length} pasos):</h3>
+                        ${instructionsHtml}
+                    `;
+                } else if (status === "REQUEST_DENIED") {
+                    document.getElementById("info").innerHTML = `
+                        <h3>❌ Error: La API Key no tiene permisos suficientes</h3>
+                        <div class="error">
+                            Soluciones:
+                            <ul>
+                                <li>Verifica que la API Key sea correcta</li>
+                                <li>Habilita Directions API en Google Cloud Console</li>
+                                <li>Habilita Maps JavaScript API en Google Cloud Console</li>
+                                <li>Activa la facturación en tu proyecto</li>
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById("info").innerHTML = '<h3>❌ Error</h3><div class="error">Error al calcular la ruta: ' + status + '</div>';
+                }
+            });
+        }
+
+        window.initMap = initMap;
+
+        function handleApiError() {
+            document.getElementById("info").innerHTML = `
+                <h3>❌ Error de carga</h3>
+                <div class="error">
+                    No se pudo cargar Google Maps API.<br>
+                    Posibles causas:
+                    <ul>
+                        <li>API Key inválida o no configurada</li>
+                        <li>Maps JavaScript API no habilitada</li>
+                        <li>Sin conexión a internet</li>
+                    </ul>
+                </div>
+            `;
+        }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=$API_KEY&callback=initMap&libraries=places&v=weekly"
+            async defer onerror="handleApiError()"></script>
+</body>
+</html>
