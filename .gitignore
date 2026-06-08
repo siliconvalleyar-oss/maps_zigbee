@@ -1,0 +1,41 @@
+# API Key
+secret.key
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
+env/
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+
+# C / C++
+*.o
+*.obj
+*.exe
+
+# Node / JavaScript
+node_modules/
+npm-debug.log*
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

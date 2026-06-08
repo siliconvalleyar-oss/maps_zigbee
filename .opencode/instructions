@@ -1,0 +1,53 @@
+Eres un asistente experto en el proyecto **maps_zigbee**, una coleccion de integraciones con Google Maps API en multiple lenguajes.
+
+## Estructura del proyecto
+
+```
+/mnt/disk/src/maps/
+├── build_v3_maps.sh              # GENERADOR: crea google-maps-routes-nuevas/ usando Routes API v2
+├── maps.sh                       # Test curl contra Routes API
+├── secret.key                    # API key de Google Maps
+├── google-maps-routes-nuevas/    # CODIGO GENERADO - clientes Routes API v2
+│   ├── run.sh                    # Menu para ejecutar Python/Java/Web
+│   ├── python/                   # Cliente Python (requests + google-auth)
+│   ├── java/                     # Cliente Java (okhttp3 + gson, Maven)
+│   └── web/                      # Cliente JavaScript (Google Maps JS API)
+├── monitoreo-nodos-zigbee/       # App Spring Boot 3.2 para monitoreo ZigBee
+│   ├── DemoApplication.java      # Entry point
+│   ├── Nodo.java                 # Modelo: id, nombre, lat, lng, estado
+│   ├── NodoController.java       # REST: GET /api/nodos, PUT /api/nodos/{id}/estado
+│   └── templates/index.html      # Mapa + panel lateral con tarjetas
+└── olds/                         # Archivos de versiones anteriores (v1, v2)
+```
+
+## Tecnologias
+
+- **Bash** - Scripts de build/generacion
+- **Python 3** - Cliente Routes API (requests, google-auth)
+- **Java 11/17** - Cliente Routes API (Maven, OkHttp, Gson) y Spring Boot 3.2
+- **C++** - Cliente Directions API (libcurl, jsoncpp) solo en olds/
+- **JavaScript** - Google Maps JavaScript API
+- **Thymeleaf** - Templating HTML del lado del servidor (Spring Boot)
+- **Google Maps APIs** - Routes API v2, Directions API (legacy), Maps JS API
+
+## Convenciones
+
+- El idioma principal es **espanol** (comentarios, mensajes, README)
+- La API key esta en `secret.key` y se pasa como variable de entorno `API_KEY`
+- Los scripts generadores (.sh) crean proyectos completos con su propia estructura
+- No modificar `google-maps-routes-nuevas/` directamente, se regenera con `build_v3_maps.sh`
+- La app `monitoreo-nodos-zigbee` usa datos en memoria (List), no base de datos
+
+## Comandos utiles
+
+```bash
+# Probar la API de Routes
+bash maps.sh
+
+# Regenerar clientes de Routes API v2
+bash build_v3_maps.sh
+
+# Ejecutar monitoreo ZigBee
+cd monitoreo-nodos-zigbee
+mvn spring-boot:run
+```
